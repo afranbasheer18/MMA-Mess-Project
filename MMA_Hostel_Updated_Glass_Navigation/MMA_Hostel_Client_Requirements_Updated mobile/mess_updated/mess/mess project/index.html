@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+
+  <title>MMA Hostel Mount Road</title>
+
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<!-- =========================================================
+     LOGIN
+     ========================================================= -->
+
+<div id="login" class="screen active">
+
+  <div class="login-card">
+
+    <div class="login-mark">
+      MH
+    </div>
+
+    <h1>
+      MMA Hostel Mount Road
+    </h1>
+
+    <p class="sub">
+      Mess Management
+    </p>
+
+    <div class="field">
+
+      <label>
+        User ID
+      </label>
+
+      <input
+        id="uid"
+        type="text"
+        placeholder="Enter User ID"
+        autocomplete="username"
+      >
+
+    </div>
+
+
+    <div class="field">
+
+      <label>
+        Password
+      </label>
+
+      <div class="pw-wrap">
+
+        <input
+          id="pw"
+          type="password"
+          placeholder="Enter password"
+          autocomplete="current-password"
+        >
+
+        <button
+          type="button"
+          onclick="togglePw()"
+          id="pwToggle"
+        >
+          Show
+        </button>
+
+      </div>
+
+    </div>
+
+
+    <div
+      class="err-msg"
+      id="loginErr"
+    >
+      Incorrect User ID or password.
+    </div>
+
+
+    <button
+      class="btn-primary"
+      onclick="doLogin()"
+    >
+      Login
+    </button>
+
+
+    <div class="hint">
+      Login using the User ID and password given by management.
+    </div>
+
+  </div>
+
+</div>
+
+
+<!-- =========================================================
+     APP
+     ========================================================= -->
+
+<div id="app">
+
+
+  <!-- HEADER -->
+
+  <header class="top">
+
+    <div class="top-row">
+
+      <div>
+
+        <div
+          class="name"
+          id="hdrName"
+        >
+          Student
+        </div>
+
+        <div class="hostel">
+          MMA Hostel · Mount Road
+        </div>
+
+      </div>
+
+
+      <div class="top-icons">
+
+        <button
+          class="icon-btn"
+          onclick="openScreen('bill')"
+        >
+          ₹
+
+          <span
+            class="badge"
+            id="billBadge"
+            style="display:none"
+          ></span>
+
+        </button>
+
+
+        <button
+          class="icon-btn theme-header-btn"
+          id="themeHeaderBtn"
+          type="button"
+          onclick="toggleTheme()"
+          aria-label="Toggle dark and light mode"
+          title="Toggle dark/light mode"
+        >
+          🌙
+        </button>
+
+
+        <button
+          class="icon-btn"
+          onclick="openScreen('notifs')"
+        >
+          🔔
+
+          <span
+            class="badge"
+            id="notifBadge"
+          >
+            0
+          </span>
+
+        </button>
+
+      </div>
+
+    </div>
+
+  </header>
+
+
+  <!-- =======================================================
+       MAIN
+       ======================================================= -->
+
+  <main>
+
+
+    <!-- =====================================================
+         HOME
+         ===================================================== -->
+
+    <section
+      id="home"
+      class="screen active"
+    >
+
+      <div
+        class="greet"
+        id="greetText"
+      >
+        Good Morning, Student
+      </div>
+
+
+      <div
+        class="date"
+        id="todayDate"
+      ></div>
+
+
+      <!-- TODAY'S FOOD -->
+
+      <div class="section-title">
+        Today's Food
+      </div>
+
+      <div
+        class="food-row"
+        id="todayFood"
+      ></div>
+
+
+      <!-- WEEKLY MENU -->
+
+      <div class="section-title">
+        Weekly Mess Menu
+      </div>
+
+      <div
+        class="week-scroll"
+        id="weekMenu"
+      ></div>
+    <!-- =================================================
+           TOMORROW'S MESS ENTRY
+           ================================================= -->
+
+      <div class="section-title">
+
+        Tomorrow's Mess Entry
+
+        <span
+          id="tomorrowEntryDate"
+          style="
+            font-size:13px;
+            font-weight:500;
+            opacity:.7;
+            margin-left:8px;
+          "
+        ></span>
+
+      </div>
+
+
+      <div class="card">
+
+        <div id="qtyRows"></div>
+
+
+        <div class="cutoff-note">
+         Mess entry closes at <span id="cutoffTimeDisplay">6:00 AM</span>.
+        </div>
+
+
+        <button
+          class="btn-primary"
+          id="tomorrowSubmitBtn"
+          onclick="submitEntry()"
+        >
+          Submit Mess Entry
+        </button>
+
+
+        <button
+          class="btn-primary"
+          id="tomorrowEditBtn"
+          onclick="editTomorrowEntry()"
+          style="display:none; margin-top:10px;"
+        >
+          Edit Mess Entry
+        </button>
+
+
+        <div
+          class="confirm-msg"
+          id="entryConfirm"
+        >
+          Your mess entry for tomorrow has been submitted successfully.
+        </div>
+
+      </div>
+
+    
+    <!-- TODAY'S CONFIRMATION — HOME ONLY -->
+    <div class="section-title">
+      Today's Confirmation
+      <span id="todayEntryDate" style="font-size:13px;font-weight:500;opacity:.7;margin-left:8px;"></span>
+    </div>
+
+    <div class="card">
+      <div id="todayEntry"></div>
+    </div>
+</section>
+
+    <!-- =================================================
+           YESTERDAY'S MESS ENTRY
+           ================================================= -->
+
+     
+<!-- =====================================================
+         MESS
+         ===================================================== -->
+
+    <section
+      id="mess"
+      class="screen"
+    >
+
+      <div id="mealStatusCard"></div>
+
+    </section>
+
+
+    <!-- =====================================================
+         MONTHLY
+         ===================================================== -->
+
+    <section
+      id="monthly"
+      class="screen"
+    >
+
+      <div class="section-title">
+        Monthly Mess Entry
+      </div>
+
+
+      <div class="card">
+
+        <div class="month-summary">
+
+          <div class="stat-card">
+
+            <div
+              class="num"
+              id="monthlyDays"
+            >
+              0
+            </div>
+
+            <div class="lbl">
+              Days entered
+            </div>
+
+          </div>
+
+
+          <div class="stat-card">
+
+            <div
+              class="num"
+              id="monthlyMeals"
+            >
+              0
+            </div>
+
+            <div class="lbl">
+              Total meals
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <div class="table-wrap">
+
+          <table class="entries">
+
+            <thead>
+
+              <tr>
+                <th>Date</th>
+                <th>B</th>
+                <th>L</th>
+                <th>D</th>
+                <th>Total</th>
+              </tr>
+
+            </thead>
+
+
+            <tbody id="monthlyBody"></tbody>
+
+          </table>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- =====================================================
+         BILL
+         ===================================================== -->
+
+    <section
+      id="bill"
+      class="screen"
+    >
+
+      <div class="section-title">
+        Mess Bill
+      </div>
+
+      <div id="billList"></div>
+
+    </section>
+
+
+    <!-- =====================================================
+         NOTIFICATIONS
+         ===================================================== -->
+
+    <section
+      id="notifs"
+      class="screen"
+    >
+
+      <button
+        class="back"
+        onclick="openScreen('home')"
+      >
+        ← Back
+      </button>
+
+
+      <div
+        class="section-title"
+        style="margin-top:0"
+      >
+        Notifications
+      </div>
+
+
+      <div
+        class="card"
+        id="notifList"
+      ></div>
+
+    </section>
+
+
+    <!-- =====================================================
+         MORE
+         ===================================================== -->
+
+    <section
+      id="more"
+      class="screen"
+    >
+
+      <div
+        class="section-title"
+        style="margin-top:0"
+      >
+        More
+      </div>
+
+
+      <div class="card more-list">
+
+        <div
+          class="item"
+          onclick="openScreen('monthly')"
+        >
+
+          <div class="l">
+            📅 Monthly Mess Entry
+          </div>
+
+          <span>
+            ›
+          </span>
+
+        </div>
+
+
+        <div
+          class="item"
+          onclick="openScreen('settings')"
+        >
+
+          <div class="l">
+            ⚙️ Settings
+          </div>
+
+          <span>
+            ›
+          </span>
+
+        </div>
+
+
+        <div
+          class="item"
+          onclick="confirmAction('switch')"
+        >
+
+          <div class="l">
+            🔁 Switch User
+          </div>
+
+          <span>
+            ›
+          </span>
+
+        </div>
+
+
+        <div
+          class="item"
+          onclick="confirmAction('logout')"
+        >
+
+          <div class="l">
+            🚪 Logout
+          </div>
+
+          <span>
+            ›
+          </span>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- =====================================================
+         SETTINGS
+         ===================================================== -->
+
+    <section
+      id="settings"
+      class="screen"
+    >
+
+      <button
+        class="back"
+        onclick="openScreen('more')"
+      >
+        ← Back
+      </button>
+
+
+      <div
+        class="section-title"
+        style="margin-top:0"
+      >
+        Account Information
+      </div>
+
+
+      <div class="card">
+
+
+        <div class="settings-row">
+
+          <span class="l">
+            Name
+          </span>
+
+          <span
+            class="v"
+            id="settingsName"
+          ></span>
+
+        </div>
+
+
+        <div class="settings-row">
+
+          <span class="l">
+            User ID
+          </span>
+
+          <span
+            class="v"
+            id="settingsUserId"
+          ></span>
+
+        </div>
+
+
+        <div class="settings-row">
+
+          <span class="l">
+            Hostel
+          </span>
+
+          <span class="v">
+            MMA Hostel, Mount Road
+          </span>
+
+        </div>
+
+
+        <div class="settings-row">
+
+          <span class="l">
+            Room Number
+          </span>
+
+          <span
+            class="v"
+            id="settingsRoom"
+          ></span>
+
+        </div>
+
+
+        <div class="settings-row">
+
+          <span class="l">
+            Branch
+          </span>
+
+          <span
+            class="v"
+            id="settingsBranch"
+          ></span>
+
+        </div>
+
+
+        <div class="settings-row">
+
+          <span class="l">
+            Status
+          </span>
+
+          <span
+            class="v"
+            id="settingsStatus"
+            style="color:var(--success)"
+          ></span>
+
+        </div>
+
+
+      </div>
+
+
+      <div class="section-title">
+        Login Details
+      </div>
+
+
+      <div class="card more-list">
+
+        <div class="item">
+
+          <div class="l">
+            🔑 Change Password
+          </div>
+
+          <span>
+            ›
+          </span>
+
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+
+  <!-- =====================================================
+       BOTTOM NAVIGATION
+       ===================================================== -->
+
+  <nav class="bottom">
+
+    <button
+      class="navbtn active"
+      data-s="home"
+      onclick="openScreen('home')"
+    >
+
+      <span class="ic">
+        🏠
+      </span>
+
+      Home
+
+    </button>
+
+
+    <button
+      class="navbtn"
+      data-s="mess"
+      onclick="openScreen('mess')"
+    >
+
+      <span class="ic">
+        🍽️
+      </span>
+
+      Mess
+
+    </button>
+
+
+    <button
+      class="navbtn"
+      data-s="monthly"
+      onclick="openScreen('monthly')"
+    >
+
+      <span class="ic">
+        📅
+      </span>
+
+      Monthly
+
+    </button>
+
+
+    <button
+      class="navbtn"
+      data-s="bill"
+      onclick="openScreen('bill')"
+    >
+
+      <span class="ic">
+        💰
+      </span>
+
+      Bill
+
+    </button>
+
+
+    <button
+      class="navbtn"
+      data-s="more"
+      onclick="openScreen('more')"
+    >
+
+      <span class="ic">
+        ☰
+      </span>
+
+      More
+
+    </button>
+
+  </nav>
+
+</div>
+
+
+<!-- =========================================================
+     CONFIRM MODAL
+     ========================================================= -->
+
+<div
+  class="modal-bg"
+  id="modalBg"
+>
+
+  <div class="modal">
+
+    <h3 id="modalTitle">
+      Are you sure?
+    </h3>
+
+    <p id="modalText">
+      This will log you out.
+    </p>
+
+
+    <div class="row">
+
+      <button
+        class="cancel"
+        onclick="closeModal()"
+      >
+        Cancel
+      </button>
+
+
+      <button
+        class="confirm"
+        onclick="doConfirm()"
+      >
+        Confirm
+      </button>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+<script src="app.js"></script>
+<script src="client-updates.js"></script>
+<script src="enhancements.js"></script>
+
+</body>
+</html>

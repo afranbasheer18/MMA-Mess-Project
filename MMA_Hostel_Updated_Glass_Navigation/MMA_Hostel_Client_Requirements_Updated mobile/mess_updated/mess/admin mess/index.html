@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MMA Hostel — Admin</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="login" class="screen active">
+  <div class="login-card">
+    <div class="login-mark">MH</div>
+    <h1>MMA Hostel Mount Road</h1>
+    <p class="sub">Admin / Management</p>
+    <div class="field"><label>Admin ID</label><input id="uid" type="text" placeholder="e.g. ADMIN01"></div>
+    <div class="field">
+      <label>Password</label>
+      <div class="pw-wrap">
+        <input id="pw" type="password" placeholder="Enter password">
+        <button type="button" onclick="togglePw()" id="pwToggle">Show</button>
+      </div>
+    </div>
+    <div class="err-msg" id="loginErr">Incorrect Admin ID or password.</div>
+    <button class="btn-primary" onclick="doLogin()">Login</button>
+    <div class="hint">Demo: ADMIN01 / admin123</div>
+  </div>
+</div>
+
+<div id="app">
+  <aside class="side">
+    <div class="brand">MH<span>Admin</span></div>
+    <button class="navbtn active" data-s="dash" onclick="openScreen('dash')">📊 Dashboard</button>
+    <button class="navbtn" data-s="users" onclick="openScreen('users')">👤 Users</button>
+    <button class="navbtn" data-s="menu" onclick="openScreen('menu')">🍽️ Food Menu</button>
+    <button class="navbtn" data-s="entries" onclick="openScreen('entries')">📋 Mess Entries</button>
+    <button class="navbtn" data-s="records" onclick="openScreen('records')">🍴 Meal Records</button>
+    <button class="navbtn" data-s="bills" onclick="openScreen('bills')">💰 Bills</button>
+    <button class="navbtn" data-s="notif" onclick="openScreen('notif')">🔔 Notifications</button>
+    <button class="navbtn" data-s="feedback" onclick="openScreen('feedback')">⭐ Feedback</button>
+    <button class="navbtn logout" onclick="doLogout()">🚪 Logout</button>
+  </aside>
+
+  <div class="main-wrap">
+    <header class="top">
+      <button class="hamburger" onclick="toggleSide()">☰</button>
+      <div class="hostel">MMA Hostel · Mount Road</div>
+      <div class="admin-name">Admin</div>
+    </header>
+
+    <main>
+      <!-- DASHBOARD -->
+      <section id="dash" class="screen active">
+        <div class="section-title" style="margin-top:0">Today's Overview</div>
+        <div class="stat-grid">
+          <div class="card stat"><div class="num" id="statUsers">0</div><div class="lbl">Active students</div></div>
+          <div class="card stat"><div class="num" id="statEntries">0</div><div class="lbl">Tomorrow's entries</div></div>
+          <div class="card stat"><div class="num" id="statPending">0</div><div class="lbl">Pending bills</div></div>
+          <div class="card stat"><div class="num" id="statFb">0</div><div class="lbl">New feedback</div></div>
+        </div>
+        <div class="section-title">Today's Menu</div>
+        <div class="card">
+          <div class="food-row" id="dashMenu"></div>
+        </div>
+      </section>
+
+      <!-- USERS -->
+      <section id="users" class="screen">
+        <div class="row-between">
+          <div class="section-title" style="margin-top:0">Manage Users</div>
+          <button class="btn-primary small" onclick="openUserForm()">+ Add User</button>
+        </div>
+        <div class="card">
+          <div class="table-wrap">
+            <table class="dtable">
+              <thead><tr><th>User ID</th><th>Name</th><th>Room</th><th>Branch</th><th>Status</th><th></th></tr></thead>
+              <tbody id="usersBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- MENU -->
+      <section id="menu" class="screen">
+        <div class="section-title" style="margin-top:0">Today's Food</div>
+        <div class="card">
+          <div class="grid3" id="todayMenuForm"></div>
+          <button class="btn-primary small" onclick="saveTodayMenu()">Save Today's Menu</button>
+          <div class="confirm-msg" id="menuConfirm">Today's menu updated.</div>
+        </div>
+        <div class="section-title">Weekly Menu</div>
+        <div class="card">
+          <div class="table-wrap">
+            <table class="dtable editable">
+              <thead><tr><th>Day</th><th>Breakfast</th><th>Lunch</th><th>Dinner</th></tr></thead>
+              <tbody id="weekBody"></tbody>
+            </table>
+          </div>
+          <button class="btn-primary small" onclick="saveWeekMenu()">Save Weekly Menu</button>
+          <div class="confirm-msg" id="weekConfirm">Weekly menu updated.</div>
+        </div>
+        <div class="section-title">Mess Entry Cutoff</div>
+        <div class="card cutoff-card">
+          <label>Entry closes at</label>
+          <input type="time" id="cutoffTime">
+          <button class="btn-primary small" onclick="saveCutoff()">Save</button>
+          <div class="confirm-msg" id="cutoffConfirm">Cutoff time updated.</div>
+        </div>
+      </section>
+
+      <!-- ENTRIES -->
+      <section id="entries" class="screen">
+        <div class="section-title" style="margin-top:0"> Mess Entries</div>
+        <div class="card">
+          <div class="table-wrap">
+            <table class="dtable">
+              <thead><tr><th>User</th><th>Room</th><th>Breakfast</th><th>Lunch</th><th>Dinner</th><th>Total</th></tr></thead>
+              <tbody id="entriesBody"></tbody>
+            </table>
+          </div>
+          <div class="totals-row" id="entriesTotals"></div>
+        </div>
+      </section>
+
+      <!-- MEAL RECORDS -->
+      <section id="records" class="screen">
+        <div class="rec-head">
+          <div>
+            <div class="section-title" style="margin-top:0">Today's Meal Records</div>
+            <div class="rec-date">📅 <input type="date" id="recDate" onchange="renderRecords()"></div>
+          </div>
+          <div class="rec-filters">
+            <label>Branch<select id="fBranch" onchange="renderRecords()"><option value="">All</option></select></label>
+            <label>Room<select id="fRoom" onchange="renderRecords()"><option value="">All</option></select></label>
+            <label>Meal<select id="fMeal" onchange="renderRecords()">
+              <option value="">All</option><option value="b">Breakfast</option><option value="l">Lunch</option><option value="d">Dinner</option>
+            </select></label>
+            <label>Status<select id="fStatus" onchange="renderRecords()">
+              <option value="">All</option><option>Completed</option><option>Partial</option><option>Mismatch</option><option>Missing</option><option>No meals</option>
+            </select></label>
+          </div>
+        </div>
+        <div class="rec-summary" id="recSummary"></div>
+        <div class="card">
+          <div class="table-wrap">
+            <table class="dtable rec-table">
+              <thead>
+                <tr>
+                  <th rowspan="2">Student Name</th><th rowspan="2">ID</th><th rowspan="2">Branch</th><th rowspan="2">Room</th>
+                  <th colspan="3" class="grp bf">Breakfast</th>
+                  <th colspan="3" class="grp ln">Lunch</th>
+                  <th colspan="3" class="grp dn">Dinner</th>
+                  <th rowspan="2">Status</th><th rowspan="2">Remarks</th>
+                </tr>
+                <tr class="sub-row">
+                  <th>Expected</th><th>Saved</th><th>Time</th>
+                  <th>Expected</th><th>Saved</th><th>Time</th>
+                  <th>Expected</th><th>Saved</th><th>Time</th>
+                </tr>
+              </thead>
+              <tbody id="recordsBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- BILLS -->
+      <section id="bills" class="screen">
+        <div class="row-between">
+          <div class="section-title" style="margin-top:0">Monthly Bill Calculator</div>
+          <button class="btn-primary small" onclick="generateBills()">Generate / Update Monthly Bills</button>
+        </div>
+        <div class="card bill-config">
+          <div class="grid3">
+            <div class="field"><label>Billing month</label><input id="billMonth" type="month" onchange="renderBillCalculator()"></div>
+            <div class="field"><label>Breakfast rate (₹ per unit)</label><input id="rateBreakfast" type="number" min="0" step="0.01" value="30" oninput="saveBillSettings()" onchange="renderBillCalculator()"></div>
+            <div class="field"><label>Lunch rate (₹ per unit)</label><input id="rateLunch" type="number" min="0" step="0.01" value="50" oninput="saveBillSettings()" onchange="renderBillCalculator()"></div>
+            <div class="field"><label>Dinner rate (₹ per unit)</label><input id="rateDinner" type="number" min="0" step="0.01" value="40" oninput="saveBillSettings()" onchange="renderBillCalculator()"></div>
+            <div class="field"><label>Maintenance distribution</label><select id="maintenanceMode" onchange="saveBillSettings();renderBillCalculator()"><option value="equal">Divide total equally among active users</option><option value="custom">Use custom amount per user</option></select></div>
+            <div class="field"><label>Total monthly maintenance fee (₹)</label><input id="maintenanceTotal" type="number" min="0" step="0.01" value="0" oninput="saveBillSettings()" onchange="renderBillCalculator()"></div>
+            <div class="field"><label>Cooking fee distribution</label><select id="cookingMode" onchange="saveBillSettings();renderBillCalculator()"><option value="equal">Divide total equally among active users</option><option value="custom">Use custom amount per user</option></select></div>
+            <div class="field"><label>Total monthly cooking fee (₹)</label><input id="cookingTotal" type="number" min="0" step="0.01" value="0" oninput="saveBillSettings()" onchange="renderBillCalculator()"></div>
+          </div>
+          <p class="bill-help">Rates and fees are saved for future calculations. Generated bills keep their own rate/fee snapshots.</p>
+          <button class="btn-primary small" onclick="renderBillCalculator()">Refresh Calculation Preview</button>
+          <button class="btn-secondary small" onclick="generateBills()">Generate / Update Bills</button>
+          <div id="billPreviewMessage" class="bill-help" aria-live="polite"></div>
+        </div>
+        <div class="section-title">Per-user charges and calculation preview</div>
+        <div class="card">
+          <div class="table-wrap">
+            <table class="dtable">
+              <thead><tr><th>User / ID</th><th>Room</th><th>B Qty</th><th>L Qty</th><th>D Qty</th><th>Food subtotal</th><th>Fine ₹</th><th>Fine reason</th><th>Maintenance ₹</th><th>Cooking ₹</th><th>Other charge ₹</th><th>Charge reason</th><th>Discount ₹</th><th>Discount reason</th><th>Estimated total</th></tr></thead>
+              <tbody id="billCalcBody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="section-title">Generated bill history</div>
+        <div class="card">
+          <div class="table-wrap">
+            <table class="dtable">
+              <thead><tr><th>Month</th><th>User</th><th>Meal units (B/L/D)</th><th>Food subtotal</th><th>Adjustments</th><th>Final amount</th><th>Status</th><th>Generated / updated</th><th>Action</th></tr></thead>
+              <tbody id="billsBody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="section-title">Previous bill versions</div>
+        <div class="card">
+          <div class="table-wrap">
+            <table class="dtable">
+              <thead><tr><th>Archived at</th><th>Month</th><th>User</th><th>Previous total</th><th>Revision</th></tr></thead>
+              <tbody id="billArchiveBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- NOTIFICATIONS -->
+      <section id="notif" class="screen">
+        <div class="section-title" style="margin-top:0">Send Notification</div>
+        <div class="card">
+          <div class="field"><label>Title</label><input id="notifTitle" type="text" placeholder="e.g. Special dinner tomorrow"></div>
+          <div class="field"><label>Message</label><textarea id="notifMsg" rows="3" placeholder="Notification details"></textarea></div>
+          <button class="btn-primary small" onclick="sendNotif()">Send to All Students</button>
+          <div class="confirm-msg" id="notifConfirm">Notification sent.</div>
+        </div>
+        <div class="section-title">Sent History</div>
+        <div class="card" id="notifHistory"></div>
+      </section>
+
+      <!-- FEEDBACK -->
+      <section id="feedback" class="screen">
+        <div class="section-title" style="margin-top:0">Student Feedback</div>
+        <div class="card" id="feedbackList"></div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<!-- ADD/EDIT USER MODAL -->
+<div class="modal-bg" id="userModalBg">
+  <div class="modal">
+    <h3 id="userModalTitle">Create User</h3>
+    <div class="field"><label>User ID (unique)</label><input id="nuId" type="text" placeholder="e.g. STU102"></div>
+    <div class="field"><label>Full name</label><input id="nuName" type="text"></div>
+    <div class="field"><label>Password (leave blank to keep current when editing)</label><input id="nuPw" type="password" autocomplete="new-password"></div>
+    <div class="field"><label>Account type</label><select id="nuType"><option value="student">Student</option><option value="worker">Worker</option></select></div>
+    <div class="field"><label>Room Number</label><input id="nuRoom" type="text"></div>
+    <div class="field"><label>Branch</label><input id="nuBranch" type="text" value="Mount Road"></div>
+    <div class="field"><label>Status</label><select id="nuStatus"><option value="active">Active</option><option value="inactive">Inactive</option></select></div>
+    <div class="row">
+      <button class="cancel" onclick="closeUserForm()">Cancel</button>
+      <button class="confirm add" id="saveUserButton" onclick="saveUser()">Create User</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+<script src="admin-updates.js"></script>
+<script src="enhancements.js"></script>
+</body>
+</html>
