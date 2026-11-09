@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en" data-page="student">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+
+  <title>MMA Mess - Mount Road</title>
+
+  <script>
+    (function () {
+      var theme = "dark";
+      try {
+        var savedTheme = localStorage.getItem("mma_theme");
+        if (savedTheme) savedTheme = JSON.parse(savedTheme);
+        if (savedTheme === "light" || savedTheme === "dark") theme = savedTheme;
+      } catch (_) {}
+      document.documentElement.dataset.theme = theme;
+    })();
+  </script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body class="session-checking" data-page="student">
+
+<!-- =========================================================
+     LOGIN
+     ========================================================= -->
+
+<div id="login" class="screen active">
+  <div class="login-card">
+    <div class="login-mark">MM</div>
+    <h1>MMA Mess - Mount Road</h1>
+    <p class="sub">Mess Management</p>
+
+    <div class="field">
+      <label>Email or Phone</label>
+      <input id="uid" type="text" placeholder="Enter email or phone" autocomplete="username">
+    </div>
+
+    <div class="field">
+      <label>Password</label>
+      <div class="pw-wrap">
+        <input id="pw" type="password" placeholder="Enter password" autocomplete="current-password">
+        <button type="button" onclick="togglePw()" id="pwToggle">Show</button>
+      </div>
+    </div>
+
+    <div class="err-msg" id="loginErr">Invalid email/phone or password. Please enter correct login details.</div>
+    <button class="btn-primary" onclick="doLogin()">Sign In</button>
+
+    <div class="enroll-line">New here? <button class="text-link" type="button" onclick="openAuthScreen('enroll')">Enroll now</button></div>
+  </div>
+</div>
+
+<div id="enroll" class="screen auth-screen">
+  <div class="login-card">
+    <button class="back auth-back" type="button" onclick="openAuthScreen('login')">← Back to Login</button>
+    <div class="login-mark">MM</div>
+    <h1>Enroll Your Account</h1>
+    <p class="sub">Submit your details and wait for owner approval.</p>
+    <div class="field"><label>Name</label><input id="enrollName" type="text" placeholder="Full name" autocomplete="name"></div>
+    <div class="field"><label>Room No</label><input id="enrollRoom" type="text" placeholder="Room number"></div>
+    <div class="field"><label>Phone No</label><input id="enrollPhone" type="tel" placeholder="10-digit mobile number" autocomplete="tel"></div>
+    <div class="field"><label>Gmail ID</label><input id="enrollEmail" type="email" placeholder="yourname@gmail.com" autocomplete="email"></div>
+    <div class="field"><label>Create Password</label><input id="enrollPassword" type="password" placeholder="Create password" autocomplete="new-password"></div>
+    <div class="field"><label>Confirm Password</label><input id="enrollConfirm" type="password" placeholder="Confirm password" autocomplete="new-password"></div>
+    <div class="err-msg" id="enrollErr"></div>
+    <button class="btn-primary" type="button" onclick="submitEnrollment()">Submit Enrollment</button>
+    <div class="auth-note">Your account will remain pending until the owner approves your enrollment.</div>
+  </div>
+</div>
+
+<!-- =========================================================
+     APP
+     ========================================================= -->
+
+<div id="app">
+
+
+  <!-- HEADER -->
+
+  <header class="top">
+
+    <div class="top-row">
+
+      <div>
+
+        <div
+          class="name"
+          id="hdrName"
+        >
+          Student
+        </div>
+
+        <div class="hostel">
+          MMA Mess - Mount Road
+        </div>
+
+      </div>
+
+
+      <div class="top-icons">
+
+        <button
+          class="icon-btn"
+          onclick="openScreen('bill')"
+        >
+          ₹
+
+          <span
+            class="badge"
+            id="billBadge"
+            style="display:none"
+          ></span>
+
+        </button>
+
+
+        <button
+          class="icon-btn theme-header-btn"
+          id="themeHeaderBtn"
+          type="button"
+          onclick="toggleTheme()"
+          aria-label="Toggle dark and light mode"
+          title="Toggle dark/light mode"
+        >
+          🌙
+        </button>
+
+
+        <button
+          class="icon-btn"
+          onclick="openScreen('notifs')"
+        >
+          🔔
+
+          <span
+            class="badge"
+            id="notifBadge"
+          >
+            0
+          </span>
+
+        </button>
+
+      </div>
+
+    </div>
+
+  </header>
+
+
+  <!-- =======================================================
+       MAIN
+       ======================================================= -->
+
+  <main>
+
+
+    <!-- =====================================================
+         HOME
+         ===================================================== -->
+
+    <section
+      id="home"
+      class="screen active"
+    >
+
+      <div
+        class="greet"
+        id="greetText"
+      >
+        Hi, Student
+      </div>
+
+
+      <div
+        class="date"
+        id="todayDate"
+      ></div>
+
+
+      <!-- TODAY'S FOOD -->
+
+      <div class="section-title">
+        Today's Food
+      </div>
+
+      <div
+        class="food-row"
+        id="todayFood"
+      ></div>
+
+
+      <!-- WEEKLY MENU -->
+
+      <div class="section-title">
+        Weekly Mess Menu
+      </div>
+
+      <div
+        class="week-scroll"
+        id="weekMenu"
+      ></div>
+    <!-- =================================================
+           TOMORROW'S MESS ENTRY
+           ================================================= -->
+
+      <div class="section-title">
+
+        Tomorrow's Mess Entry
+
+        <span
+          id="tomorrowEntryDate"
+          style="
+            font-size:13px;
+            font-weight:500;
+            opacity:.7;
+            margin-left:8px;
+          "
+        ></span>
+
+      </div>
+
+
+      <div class="card">
+
+        <div id="qtyRows"></div>
+
+
+        <div class="cutoff-note">
+         Mess entry closes at <span id="cutoffTimeDisplay">6:00 AM</span>.
+        </div>
+
+
+        <button
+          class="btn-primary"
+          id="tomorrowSubmitBtn"
+          onclick="MMAUI.run(this,function(){return submitEntry()},{label:'Saving…',success:'Mess entry submitted.',minMs:250})"
+        >
+          Submit Mess Entry
+        </button>
+
+
+        <button
+          class="btn-primary"
+          id="tomorrowEditBtn"
+          onclick="MMAUI.run(this,function(){return editTomorrowEntry()},{label:'Opening…',minMs:150})"
+          style="display:none; margin-top:10px;"
+        >
+          Edit Mess Entry
+        </button>
+
+
+        <div
+          class="confirm-msg"
+          id="entryConfirm"
+        >
+          Your mess entry for tomorrow has been submitted successfully.
+        </div>
+
+      </div>
+
+    
+    <!-- TODAY'S CONFIRMATION — HOME ONLY -->
+    <div class="section-title">
+      Today's Confirmation
+      <span id="todayEntryDate" style="font-size:13px;font-weight:500;opacity:.7;margin-left:8px;"></span>
+    </div>
+
+    <div class="card">
+      <div id="todayEntry" class="today-confirmation"></div>
+      <div class="today-time-note">If you forget to mark a meal, the system will record it as unconfirmed. Late changes are flagged for admin review.</div>
+    </div>
+</section>
+
+    <!-- =================================================
+           YESTERDAY'S MESS ENTRY
+           ================================================= -->
+
+     
+<!-- =====================================================
+         MESS
+         ===================================================== -->
+
+    <section
+      id="mess"
+      class="screen"
+    >
+
+      <div id="mealStatusCard"></div>
+      <div id="feedbackSuccess" class="confirm-msg" style="display:none">Feedback sent successfully.</div>
+
+    </section>
+
+
+    <!-- =====================================================
+         MONTHLY
+         ===================================================== -->
+
+    <section
+      id="monthly"
+      class="screen"
+    >
+
+      <button class="back" onclick="openScreen('more')">← Back</button>
+      <div class="section-title" style="margin-top:0">Monthly Mess Entry</div>
+      <div class="field monthly-month-select"><label for="monthlyMonth">Select month</label><input type="month" id="monthlyMonth" onchange="renderMonthly()"></div>
+
+      <div class="card monthly-card">
+        <div class="bill-help">B, L, and D show the effective meal quantities for each saved entry date. Daily and monthly points use that date's food and the configured point value; "Days entered" counts each date once.</div>
+        <div class="month-summary">
+          <div class="stat-card">
+            <div class="num" id="monthlyDays">0</div>
+            <div class="lbl">Days entered</div>
+          </div>
+          <div class="stat-card">
+            <div class="num" id="monthlyMeals">0</div>
+            <div class="lbl">Total points</div>
+          </div>
+        </div>
+
+        <div class="bill-help" id="monthlyPointsNote" style="display:none"></div>
+        <div class="table-wrap">
+          <table class="entries monthly-points-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>B</th>
+                <th>L</th>
+                <th>D</th>
+                <th>Total points</th>
+              </tr>
+            </thead>
+            <tbody id="monthlyBody"></tbody>
+            <tfoot><tr><th colspan="4" style="text-align:right">Grand total</th><th id="monthlyGrandTotal">0</th></tr></tfoot>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+
+    <!-- =====================================================
+         BILL
+         ===================================================== -->
+
+    <section
+      id="bill"
+      class="screen"
+    >
+
+      <div class="section-title">
+        Mess Bill
+      </div>
+
+      <div id="billList"></div>
+
+    </section>
+
+
+    <!-- =====================================================
+         NOTIFICATIONS
+         ===================================================== -->
+
+    <section
+      id="notifs"
+      class="screen"
+    >
+
+      <button
+        class="back"
+        onclick="goBackFromNotifications()"
+      >
+        ← Back
+      </button>
+
+
+      <div
+        class="section-title"
+        style="margin-top:0"
+      >
+        Notifications
+      </div>
+
+
+      <div
+        class="card"
+        id="notifCard"
+      >
+        <button id="clearAllNotificationsBtn" class="btn-secondary small notif-clear-all" type="button" onclick="clearAllNotifications()">Clear All</button>
+        <div id="notifList"></div>
+      </div>
+
+    </section>
+
+
+    <!-- =====================================================
+         MORE
+         ===================================================== -->
+
+    <section
+      id="more"
+      class="screen"
+    >
+
+      <div
+        class="section-title"
+        style="margin-top:0"
+      >
+        More
+      </div>
+
+
+      <div class="card more-list">
+
+        <div
+          class="item"
+          onclick="openScreen('monthly')"
+        >
+
+          <div class="l">
+            📅 Monthly Mess Entry
+          </div>
+
+          <span>
+            ›
+          </span>
+
+        </div>
+
+
+        <div
+          class="item"
+          onclick="openScreen('settings')"
+        >
+
+          <div class="l">
+            ⚙️ Settings
+          </div>
+
+          <span>
+            ›
+          </span>
+
+        </div>
+
+
+        <div
+          class="item"
+          onclick="confirmAction('switch')"
+        >
+
+          <div class="l">
+            🔁 Switch User
+          </div>
+
+          <span>
+            ›
+          </span>
+
+        </div>
+
+
+        <div
+          class="item"
+          onclick="confirmAction('logout')"
+        >
+
+          <div class="l">
+            🚪 Logout
+          </div>
+
+          <span>
+            ›
+          </span>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- =====================================================
+         SETTINGS
+         ===================================================== -->
+
+    <section id="settings" class="screen">
+      <button class="back" onclick="openScreen('more')">← Back</button>
+      <div class="section-title" style="margin-top:0">Account Information</div>
+      <div class="card settings-account-card">
+        <div class="settings-row"><span class="l">Name</span><span class="v" id="settingsName"></span></div>
+        <div class="settings-row"><span class="l">Room No</span><span class="v" id="settingsRoom"></span></div>
+        <div class="settings-row"><span class="l">Email</span><span class="v" id="settingsEmail"></span></div>
+        <div class="settings-row"><span class="l">Phone</span><span class="v" id="settingsPhone"></span></div>
+      </div>
+    </section>
+
+  </main>
+
+
+  <!-- =====================================================
+       BOTTOM NAVIGATION
+       ===================================================== -->
+
+  <nav class="bottom">
+
+    <button
+      class="navbtn active"
+      data-s="home"
+      onclick="openScreen('home')"
+    >
+
+      <span class="ic">
+        🏠
+      </span>
+
+      Home
+
+    </button>
+
+
+    <button
+      class="navbtn"
+      data-s="mess"
+      onclick="openScreen('mess')"
+    >
+
+      <span class="ic">
+        🍽️
+      </span>
+
+      After Food
+
+    </button>
+
+
+    <button
+      class="navbtn"
+      data-s="monthly"
+      onclick="openScreen('monthly')"
+    >
+
+      <span class="ic">
+        📅
+      </span>
+
+      Monthly
+
+    </button>
+
+
+    <button
+      class="navbtn"
+      data-s="bill"
+      onclick="openScreen('bill')"
+    >
+
+      <span class="ic">
+        💰
+      </span>
+
+      Bill
+
+    </button>
+
+
+    <button
+      class="navbtn"
+      data-s="more"
+      onclick="openScreen('more')"
+    >
+
+      <span class="ic">
+        ☰
+      </span>
+
+      More
+
+    </button>
+
+  </nav>
+
+</div>
+
+
+<!-- =========================================================
+     CONFIRM MODAL
+     ========================================================= -->
+
+<div
+  class="modal-bg"
+  id="modalBg"
+>
+
+  <div class="modal">
+
+    <h3 id="modalTitle">
+      Are you sure?
+    </h3>
+
+    <p id="modalText">
+      This will log you out.
+    </p>
+
+
+    <div class="row">
+
+      <button
+        class="cancel"
+        onclick="closeModal()"
+      >
+        Cancel
+      </button>
+
+
+      <button
+        class="confirm"
+        onclick="doConfirm()"
+      >
+        Confirm
+      </button>
+
+    </div>
+
+  </div>
+
+</div>
+
+<div class="modal-bg extra-meal-modal-bg" id="extraMealModalBg">
+  <div class="modal extra-meal-modal" role="dialog" aria-modal="true" aria-labelledby="extraMealTitle">
+    <h3 id="extraMealTitle">Extra Meal Entry</h3>
+    <p>Expected portions: <b id="extraMealExpected">0</b><br>Entered portions: <b id="extraMealEntered">0</b></p>
+    <div class="extra-meal-options">
+      <button type="button" data-permission-choice="with_permission" aria-pressed="false"
+        onclick="selectPermissionChoice('with_permission',this)">With Permission</button>
+      <button type="button" data-permission-choice="without_permission" aria-pressed="false"
+        onclick="selectPermissionChoice('without_permission',this)">Without Permission</button>
+    </div>
+    <p id="extraMealStatus" class="extra-meal-status" aria-live="polite">Select how you are requesting these extra portions.</p>
+    <div class="row">
+      <button type="button" class="cancel" onclick="closeExtraMealDialog()">Cancel</button>
+      <button type="button" class="confirm extra-meal-submit" id="extraMealContinue" disabled
+        onclick="MMAUI.run(this,function(){return submitExtraMealChoice()},{label:'Saving…',minMs:200})">Continue</button>
+    </div>
+  </div>
+</div>
+
+
+<script src="{{ url_for('static', filename='app.js') }}?v=2"></script>
+</body>
+</html>

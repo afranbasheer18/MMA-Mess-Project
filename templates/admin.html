@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en" data-page="admin">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MMA Mess - Mount Road — Admin</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="session-checking" data-page="admin">
+
+<div id="login" class="screen active">
+  <div class="login-card">
+    <div class="login-mark">MM</div>
+    <h1>MMA Mess - Mount Road</h1>
+    <p class="sub">Admin / Management</p>
+    <div class="field"><label>Admin ID</label><input id="uid" type="text" placeholder="e.g. ADMIN01"></div>
+    <div class="field">
+      <label>Password</label>
+      <div class="pw-wrap">
+        <input id="pw" type="password" placeholder="Enter password">
+        <button type="button" onclick="togglePw()" id="pwToggle">Show</button>
+      </div>
+    </div>
+    <div class="err-msg" id="loginErr">Incorrect Admin ID or password.</div>
+    <button class="btn-primary" onclick="doLogin()">Login</button>
+  </div>
+</div>
+
+<div id="app">
+  <aside class="side">
+    <div class="brand">MM<span>Admin · <b id="activeUserCount">0 users</b></span></div>
+    <button class="navbtn active" data-s="dash" onclick="openScreen('dash')">📊 Dashboard</button>
+    <button class="navbtn" data-s="users" onclick="openScreen('users')">👤 Users</button>
+    <button class="navbtn" data-s="entries" onclick="openScreen('entries')">📋 Mess Entries <span id="noFoodNavBadge" class="no-food-nav-badge" style="display:none" aria-label="Unread no-food notifications">0</span></button>
+    <button class="navbtn" data-s="records" onclick="openScreen('records')">🍴 Meal Records</button>
+    <button class="navbtn" data-s="menu" onclick="openScreen('menu')">🍽️ Food Menu</button>
+    <button class="navbtn" data-s="cancellations" onclick="openScreen('cancellations')">🚫 Bulk Cancellation</button>
+    <button class="navbtn" data-s="bills" onclick="openScreen('bills')">💰 Bills</button>
+    <button class="navbtn" data-s="notif" onclick="openScreen('notif')">🔔 Notifications</button>
+    <button class="navbtn" data-s="feedback" onclick="openScreen('feedback')">⭐ Feedback</button>
+    <button class="navbtn" data-s="general" onclick="openScreen('general')">⚙️ General</button>
+    <button class="navbtn logout" onclick="doLogout()">🚪 Logout</button>
+  </aside>
+
+  <div class="main-wrap">
+    <header class="top">
+      <button class="hamburger" onclick="toggleSide()">☰</button>
+      <div class="hostel">MMA Mess - Mount Road</div>
+      <div class="admin-name">Admin</div>
+    </header>
+
+    <main>
+      <!-- DASHBOARD -->
+      <section id="dash" class="screen active">
+        <div class="section-title" style="margin-top:0">Dashboard</div>
+
+        <div class="stat-grid dash-grid">
+          <div class="card dash-stat"><div class="lbl">Total Students</div><div class="num" id="dsTotal">0</div></div>
+          <div class="card dash-stat"><div class="lbl">Active</div><div class="num" id="dsActive">0</div></div>
+          <div class="card dash-stat"><div class="lbl">Pending Registrations</div><div class="num" id="dsPending">0</div></div>
+          <div class="card dash-stat"><div class="lbl">Monthly Revenue</div><div class="num" id="dsRevenue">₹0</div></div>
+          <div class="card dash-stat"><div class="lbl">Monthly Expenses</div><div class="num" id="dsExpenses">₹0</div></div>
+          <div class="card dash-stat"><div class="lbl" id="dsProfitLabel">Profit / Loss</div><div class="num" id="dsProfit">₹0</div></div>
+        </div>
+
+        <div class="section-title">Today's Meals <span class="dash-date" id="dsMealDate"></span></div>
+        <div class="card">
+          <p class="dash-note">Same numbers as Mess Entries for today &mdash; both read the exact same effective count per meal, so they can't drift apart.</p>
+          <div class="table-wrap">
+            <table class="dtable dash-meals">
+              <thead><tr><th>Breakfast</th><th>Lunch</th><th>Dinner</th></tr></thead>
+              <tbody><tr><td id="dsMealB">0</td><td id="dsMealL">0</td><td id="dsMealD">0</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="section-title">Recent Activity</div>
+        <div class="card" id="dashActivity"></div>
+
+        <div class="section-title">Today's Menu</div>
+        <div class="card">
+          <div class="food-row" id="dashMenu"></div>
+        </div>
+        <div class="section-title">Bulk Meal Cancellation</div>
+        <div class="card cancellation-dashboard-card">
+          <p class="dash-note">Cancel one meal for a selected date. Students will be notified and cancelled meals will not add points or meal-related fines.</p>
+          <button class="btn-primary small" type="button" onclick="openScreen('cancellations')">Manage Meal Cancellations</button>
+        </div>
+
+        <div class="section-title">More</div>
+        <div class="stat-grid dash-grid dash-more">
+          <div class="card dash-stat"><div class="lbl">Tomorrow's entries</div><div class="num" id="statEntries">0</div></div>
+          <div class="card dash-stat"><div class="lbl">Pending bills</div><div class="num" id="statPending">0</div></div>
+          <div class="card dash-stat"><div class="lbl">New feedback</div><div class="num" id="statFb">0</div></div>
+          <div class="card dash-stat"><div class="lbl">Extra Meals Available</div><div class="num" id="dsExtraMeals">0</div></div>
+        </div>
+        <div class="section-title">Extra Meals Available Today</div>
+        <div class="card" id="dsExtraMealsList"><p class="dash-note">No cancelled meals are available right now.</p></div>
+      </section>
+
+      <!-- USERS -->
+      <section id="users" class="screen">
+        <div class="row-between">
+          <div class="section-title" style="margin-top:0">Manage Users</div>
+          <button class="btn-primary small" onclick="openUserForm()">+ Add User</button>
+        </div>
+        <div class="card">
+          <div class="entry-filter-tools">
+            <label for="usersRoomFilter">Filter by room<select id="usersRoomFilter"><option value="">All rooms</option></select></label>
+          </div>
+          <div class="table-wrap">
+            <table class="dtable">
+              <thead><tr><th>Name</th><th>Room</th><th>Edit</th><th>Delete</th><th>View</th></tr></thead>
+              <tbody id="usersBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- MENU -->
+      <section id="menu" class="screen">
+        <div class="section-title" style="margin-top:0">Today's Food</div>
+        <div class="card">
+          <div class="grid3" id="todayMenuForm"></div>
+        </div>
+        <div class="section-title">Weekly Menu</div>
+        <div class="card">
+          <div class="table-wrap">
+            <table class="dtable editable">
+              <thead><tr><th>Day</th><th>Breakfast</th><th>Lunch</th><th>Dinner</th></tr></thead>
+              <tbody id="weekBody"></tbody>
+            </table>
+          </div>
+          <button class="btn-primary small" onclick="saveWeekMenu()">Save Weekly Menu</button>
+          <div class="confirm-msg" id="weekConfirm">Weekly menu updated.</div>
+        </div>
+        <div id="foodPointsRoot"></div>
+      </section>
+
+      <!-- ENTRIES -->
+      <section id="entries" class="screen">
+        <div class="section-title" style="margin-top:0"> Mess Entries</div>
+        <div class="section-title">No-Food Requests</div>
+        <div class="card no-food-request-card">
+          <p class="bill-help">Review student requests for a specific meal and date. Approval records an auditable zero-point exception; rejection leaves normal meal-entry rules in effect.</p>
+          <div id="noFoodRequestsRoot" aria-live="polite"><div class="admin-empty">Loading no-food requests…</div></div>
+        </div>
+        <div class="card entries-card">
+          <div id="entriesBody" class="entries-sections"></div>
+        </div>
+      </section>
+
+      <!-- BULK MEAL CANCELLATION -->
+      <section id="cancellations" class="screen">
+        <div class="section-title" style="margin-top:0">Bulk Meal Cancellation</div>
+        <div class="card">
+          <div class="cancellation-controls">
+            <label for="cancellationDate">Date<input type="date" id="cancellationDate" onchange="loadCancellationHistory()"></label>
+            <label for="cancellationMeal">Meal<select id="cancellationMeal" onchange="renderCancellationStatus()">
+              <option value="b">Breakfast</option>
+              <option value="l">Lunch</option>
+              <option value="d">Dinner</option>
+            </select></label>
+            <label for="cancellationReason">Reason (optional)<textarea id="cancellationReason" rows="2" maxlength="500" placeholder="Reason for cancellation"></textarea></label>
+          </div>
+          <button class="btn-primary small" type="button" onclick="confirmMealCancellation()">Cancel Selected Meal for All Users</button>
+          <p class="bill-help">Cancellation applies to the selected date and meal only. Past or already-served meals require a second, explicit confirmation. Existing bills are adjusted with an audit record; historical bills and meal records are retained.</p>
+          <div id="cancellationStatus" class="cancellation-status" aria-live="polite"></div>
+        </div>
+        <div class="section-title">Cancellation History</div>
+        <div class="card" id="cancellationHistory" aria-live="polite">Loading cancellation history…</div>
+      </section>
+
+      <!-- MEAL RECORDS -->
+      <section id="records" class="screen">
+        <div class="rec-head">
+          <div>
+            <div class="section-title" style="margin-top:0">Today's Meal Records</div>
+            <div class="rec-date">📅 <input type="date" id="recDate" onchange="renderRecords()"></div>
+          </div>
+          <div class="rec-filters">
+            <label>Room<select id="fRoom" onchange="renderRecords()"><option value="">All</option></select></label>
+            <label>Meal<select id="fMeal" onchange="renderRecords()">
+              <option value="">All</option><option value="b">Breakfast</option><option value="l">Lunch</option><option value="d">Dinner</option>
+            </select></label>
+            <label>Status<select id="fStatus" onchange="renderRecords()">
+              <option value="">All</option><option>Completed</option><option>Pending</option><option>Partial</option><option>Mismatch</option><option>Missing</option><option>No meals</option><option>Cancelled</option>
+            </select></label>
+          </div>
+        </div>
+        <div class="rec-summary" id="recSummary"></div>
+        <div class="card">
+          <div class="table-wrap">
+            <table class="dtable rec-table">
+              <thead>
+                <tr>
+                  <th rowspan="2">Student Name</th><th rowspan="2">Room</th>
+                  <th colspan="3" class="grp bf">Breakfast</th>
+                  <th colspan="3" class="grp ln">Lunch</th>
+                  <th colspan="3" class="grp dn">Dinner</th>
+                  <th rowspan="2">Status</th><th rowspan="2">Remarks</th>
+                </tr>
+                <tr class="sub-row">
+                  <th>Expected</th><th>Entered / calculation</th><th>Time</th>
+                  <th>Expected</th><th>Entered / calculation</th><th>Time</th>
+                  <th>Expected</th><th>Entered / calculation</th><th>Time</th>
+                </tr>
+              </thead>
+              <tbody id="recordsBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- GENERAL SETTINGS -->
+      <section id="general" class="screen">
+        <div class="section-title" style="margin-top:0">General Settings</div>
+        <div class="card">
+          <p style="opacity:.72;font-size:13px;line-height:1.6;margin-bottom:14px">Manage the tomorrow entry cutoff and today's breakfast, lunch and dinner time windows. These settings are used everywhere in the user app.</p>
+          <div class="general-grid">
+            <label>Tomorrow entry closes at<input type="time" id="generalTomorrowCutoff"></label>
+            <label>Breakfast opens<input type="time" id="generalBreakfastOpen"></label>
+            <label>Breakfast closes<input type="time" id="generalBreakfastClose"></label>
+            <label>Lunch opens<input type="time" id="generalLunchOpen"></label>
+            <label>Lunch closes<input type="time" id="generalLunchClose"></label>
+            <label>Dinner opens<input type="time" id="generalDinnerOpen"></label>
+            <label>Dinner closes<input type="time" id="generalDinnerClose"></label>
+          </div>
+          <button class="btn-primary small" onclick="saveGeneralSettings()">Save General Settings</button>
+          <div class="confirm-msg" id="generalConfirm">General settings updated.</div>
+        </div>
+      </section>
+
+      <!-- BILLS -->
+      <section id="bills" class="screen">
+        <div class="row-between bills-head">
+          <div class="section-title" style="margin-top:0">Monthly Bills</div>
+          <div class="field bill-month-field"><label for="billMonth">Billing month</label><input id="billMonth" type="month"></div>
+        </div>
+        <div class="bill-toolbar" role="toolbar" aria-label="Bill export">
+          <button type="button" class="btn-secondary" id="btnBillExcel">Move to Excel Viewer</button>
+          <button type="button" class="btn-secondary" id="btnBillPdf">PDF</button>
+          <button type="button" class="btn-secondary" id="btnBillPrint">Print</button>
+        </div>
+        <div class="bill-banner" id="billStale" style="display:none"></div>
+        <div class="section-title">Individual Fine & Discount</div>
+        <div class="card bill-config" id="individualAdjustments">
+          <p class="bill-help">Choose a room and resident, then enter a fine and/or discount for the selected billing month. These values appear on the resident bill and Excel export.</p>
+          <div class="cfg-charge">
+            <div class="field"><label for="adjRoom">Room No</label><select id="adjRoom"><option value="">Select room</option></select></div>
+            <div class="field"><label for="adjUser">Name</label><select id="adjUser"><option value="">Select name</option></select></div>
+          </div>
+          <div class="cfg-charge">
+            <div class="field"><label for="adjFine">Fine (₹)</label><input id="adjFine" type="number" min="0" step="0.01" value="0"></div>
+            <div class="field"><label for="adjFineReason">Fine reason</label><input id="adjFineReason" type="text" maxlength="120" placeholder="Reason for fine"></div>
+          </div>
+          <div class="cfg-charge">
+            <div class="field"><label for="adjDiscount">Discount (₹)</label><input id="adjDiscount" type="number" min="0" step="0.01" value="0"></div>
+            <div class="field"><label for="adjDiscountReason">Discount reason</label><input id="adjDiscountReason" type="text" maxlength="120" placeholder="Reason for discount"></div>
+            <button type="button" class="btn-primary small" id="saveUserAdjustment">Save Fine / Discount</button>
+          </div><div id="adjStatus" class="confirm-msg">Adjustment saved.</div>
+        </div>
+
+        <div class="section-title">Monthly Expense-Based Point Rate</div>
+        <div class="card bill-config">
+          <div class="cfg-row"><div class="field"><label for="calculatedPerPoint">1 Point = ₹</label><input id="calculatedPerPoint" type="number" readonly value="0" aria-label="Automatically calculated rupees per point"></div><div class="field"><label>Total User Points</label><strong id="expenseTotalPoints">0</strong></div></div>
+          <div class="row-between"><div class="section-title" style="margin:8px 0">Expenses</div><button type="button" class="btn-secondary small" id="addExpenseField">+ Add New Field</button></div>
+          <div id="expenseRows"></div>
+          <div class="cfg-row"><strong>Total Expenses</strong><strong id="expenseGrandTotal">₹0</strong></div>
+          <p class="bill-help">The point rate is calculated automatically: total expenses ÷ total user points. Changes recalculate the rate and bill preview.</p>
+        </div>
+
+        <div class="section-title">Fixed Cost, Water Charges &amp; Reserved Fund</div>
+        <div class="card bill-config">
+          <p class="bill-help">Change the heading, enter the amount and save each one. <b>Split equally</b> divides the amount among all active users; <b>Charge each user</b> bills the full amount to every user.</p>
+          <div class="cfg-charge">
+            <div class="field"><label for="cfgName_fixed">Heading</label><input id="cfgName_fixed" type="text" maxlength="40"></div>
+            <div class="field"><label for="cfgAmt_fixed">Amount (₹)</label><input id="cfgAmt_fixed" type="number" min="0" step="any" inputmode="decimal"></div>
+            <div class="field"><label for="cfgMode_fixed">How to charge</label><select id="cfgMode_fixed"><option value="split">Split equally</option><option value="each">Charge each user</option></select></div>
+            <button type="button" class="btn-primary small" onclick="saveCharge('fixed',this)">Save</button>
+          </div>
+          <div class="cfg-charge">
+            <div class="field"><label for="cfgName_water">Heading</label><input id="cfgName_water" type="text" maxlength="40"></div>
+            <div class="field"><label for="cfgAmt_water">Amount (₹)</label><input id="cfgAmt_water" type="number" min="0" step="any" inputmode="decimal"></div>
+            <div class="field"><label for="cfgMode_water">How to charge</label><select id="cfgMode_water"><option value="split">Split equally</option><option value="each">Charge each user</option></select></div>
+            <button type="button" class="btn-primary small" onclick="saveCharge('water',this)">Save</button>
+          </div>
+          <div class="cfg-charge">
+            <div class="field"><label for="cfgName_reserve">Heading</label><input id="cfgName_reserve" type="text" maxlength="40"></div>
+            <div class="field"><label for="cfgAmt_reserve">Amount (₹)</label><input id="cfgAmt_reserve" type="number" min="0" step="any" inputmode="decimal"></div>
+            <div class="field"><label for="cfgMode_reserve">How to charge</label><select id="cfgMode_reserve"><option value="split">Split equally</option><option value="each">Charge each user</option></select></div>
+            <button type="button" class="btn-primary small" onclick="saveCharge('reserve',this)">Save</button>
+          </div>
+          <div class="row-between">
+            <span></span>
+            <button type="button" class="btn-secondary small" id="addCustomChargeField">+ Add New Field</button>
+          </div>
+          <div id="customChargeRows"></div>
+          <div class="bill-help" id="cfgShareHint"></div>
+        </div>
+
+        <div class="section-title">New user / mid-month discount (Fixed Cost)</div>
+        <div class="card bill-config">
+          <p class="bill-help">Give a user who joined mid-month a lower Fixed Cost. The discounted amount is spread over the other users so the total Fixed Cost stays the same.</p>
+          <div class="cfg-charge">
+            <div class="field"><label for="discUser">User</label><select id="discUser"></select></div>
+            <div class="field"><label for="discJoinDate">Joining date</label><input id="discJoinDate" type="date"></div><div class="field"><label for="discAmount">Calculated discount (₹)</label><input id="discAmount" type="number" min="0" step="0.01" inputmode="decimal" readonly></div>
+            <div class="field"><label for="discNote">Note (optional)</label><input id="discNote" type="text" maxlength="120" placeholder="e.g. Joined on 16th"></div>
+            <button type="button" class="btn-primary small" onclick="saveFixedDiscount(this)">Save Discount</button>
+          </div>
+          <div id="discPreview" class="bill-help"></div><div id="discList"></div>
+        </div>
+
+        <div class="section-title">Bills</div>
+        <div class="card">
+          <div class="bill-warn" id="billWarn" style="display:none"></div>
+          <p class="bill-help" id="billTableNote"></p>
+          <div class="table-wrap">
+            <table class="dtable bill-table">
+              <thead id="billsHead"></thead>
+              <tbody id="billsBody"></tbody>
+              <tfoot id="billsFoot"></tfoot>
+            </table>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- NOTIFICATIONS -->
+      <section id="notif" class="screen">
+        <div class="section-title" style="margin-top:0">Send Notification</div>
+        <div class="card">
+          <div class="field"><label>Title</label><input id="notifTitle" type="text" placeholder="e.g. Special dinner tomorrow"></div>
+          <div class="field"><label>Message</label><textarea id="notifMsg" rows="3" placeholder="Notification details"></textarea></div>
+          <button class="btn-primary small" onclick="sendNotif()">Send to All Students</button>
+          <div class="confirm-msg" id="notifConfirm">Notification sent.</div>
+        </div>
+        <div class="section-title">Sent History</div>
+        <div class="card" id="notifHistory"></div>
+        <div class="section-title">Received Notifications</div>
+        <div class="card">
+          <div class="admin-notif-actions">
+            <button class="btn-secondary small" id="adminClearNotifications" type="button">Clear All</button>
+          </div>
+          <div id="adminNotificationList"></div>
+        </div>
+      </section>
+
+      <!-- FEEDBACK -->
+      <section id="feedback" class="screen">
+        <div class="section-title" style="margin-top:0">Student Feedback</div>
+        <div class="card" id="feedbackList"></div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<!-- ADD/EDIT USER MODAL -->
+<div class="modal-bg" id="userModalBg">
+  <div class="modal">
+    <h3 id="userModalTitle">Create User</h3>
+    <input id="nuId" type="hidden">
+    <div class="field"><label>Name</label><input id="nuName" type="text" required></div>
+    <div class="field"><label>Room No</label><input id="nuRoom" type="text" required></div>
+    <div class="field"><label>Email</label><input id="nuEmail" type="email" autocomplete="email"></div>
+    <div class="field"><label>Permanent Password</label><input id="nuPw" type="password" autocomplete="new-password" required></div>
+    <input id="nuBranch" type="hidden" value="Mount Road">
+    <input id="nuType" type="hidden" value="student">
+    <input id="nuStatus" type="hidden" value="active">
+    <div class="row">
+      <button class="cancel" onclick="closeUserForm()">Cancel</button>
+      <button class="confirm add" id="saveUserButton" onclick="saveUser()">Create User</button>
+    </div>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='app.js') }}?v=2"></script>
+</body>
+</html>

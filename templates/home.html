@@ -1,0 +1,88 @@
+
+<!DOCTYPE html>
+<html lang="en" data-page="home">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MMA Mess - Mount Road</title>
+
+
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body data-page="home">
+<div class="hero">
+
+    <header>
+        <div class="brand">
+            <div class="logo">MM</div>
+            <div>
+                <h2>MMA Mess </h2>
+                <p>Mount Road</p>
+            </div>
+        </div>
+
+        <button class="top-login" onclick="openLogin()">
+            🔐 Login
+        </button>
+    </header>
+
+    <main>
+        <p class="eyebrow">Welcome to your home away from home</p>
+
+        <h1>
+            MMA Mess<br>
+            <span>Mount Road</span>
+        </h1>
+
+        <p class="tagline">
+            More than just a stay — it's a home away from home.
+        </p>
+
+        <p class="description">
+            Comfortable rooms, friendly faces, and delicious mess food.
+            Enjoy everyday meals, build lasting friendships, and feel
+            at home while you focus on your future.
+        </p>
+
+        <button class="main-login" onclick="openLogin()">
+            <strong>🔐 Login to Your Account</strong>
+            <small>Secure access for Admin and Residents </small>
+        </button>
+
+        <section class="features">
+            <div class="feature">
+                <div class="feature-icon">⌂</div>
+                <h3>Safe & Comfortable</h3>
+                <p>A welcoming place to rest, study, and feel at home.</p>
+            </div>
+
+            <div class="feature">
+                <div class="feature-icon">🍲</div>
+                <h3>Tasty Mess Food</h3>
+                <p>Enjoy daily meals and stay connected to your food menu.</p>
+            </div>
+
+            <div class="feature">
+                <div class="feature-icon">♧</div>
+                <h3>Supportive Community</h3>
+                <p>Share experiences, make friends, and grow together.</p>
+            </div>
+
+            <div class="feature">
+                <div class="feature-icon">🛡️</div>
+                <h3>Mess Made Simple</h3>
+                <p>Check menus, save meal entries, and view your bills.</p>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        MMA Mess - Mount Road &nbsp; | &nbsp;
+        Good Food, Good Company, A Place to Call Home
+    </footer>
+</div>
+
+<script src="{{ url_for('static', filename='app.js') }}?v=2"></script>
+</body>
+</html>
