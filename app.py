@@ -1110,7 +1110,7 @@ def get_settings():
 # --------------------------------------------------
 
 def create_registration(reg_data):
-    """Create a pending registration request with a hashed password."""
+    """Create a pending request, optionally linked to a user account."""
     data = dict(reg_data)
 
     password = data.pop("password", None)
@@ -1118,7 +1118,7 @@ def create_registration(reg_data):
     if password is not None:
         data["password_hash"] = generate_password_hash(password)
 
-    if not data.get("password_hash"):
+    if not data.get("password_hash") and not data.get("user_id"):
         raise ValueError("A password is required.")
 
     data["email"] = normalize_email(data.get("email"))
@@ -1836,6 +1836,17 @@ def login():
         return jsonify({'success': False, 'message': 'Invalid email/phone or password'}), 401
 
     if user_data.get('status') != 'active':
+        status = str(user_data.get('status') or '').strip().lower()
+        if status == 'pending' and str(user_data.get('role') or 'student').lower() == 'student':
+            return jsonify({
+                'success': False,
+                'message': 'Your enrollment is awaiting admin approval.',
+            }), 401
+        if status == 'rejected':
+            return jsonify({
+                'success': False,
+                'message': 'Your enrollment was rejected. Please contact an administrator.',
+            }), 401
         return jsonify({'success': False, 'message': 'This user account is inactive'}), 401
 
     user_obj = User(user_data)
@@ -1876,15 +1887,46 @@ def register():
     if registration_identity_exists(email, phone):
         return jsonify({'success': False, 'message': 'This email or phone is already registered or awaiting approval'}), 409
 
-    # Create registration request
+    user_id = 'STU' + uuid4().hex[:8].upper()
+    while get_user(user_id):
+        user_id = 'STU' + uuid4().hex[:8].upper()
+
+    try:
+        create_user({
+            'id': user_id,
+            'name': name,
+            'room': room,
+            'phone': phone,
+            'email': email,
+            'password': password,
+            'role': 'student',
+            'status': 'pending',
+        })
+    except DuplicateKeyError:
+        return jsonify({
+            'success': False,
+            'message': 'This email or phone is already registered or awaiting approval',
+        }), 409
+
+    # Keep the existing admin approval queue, linked to the pending user.
     reg_data = {
+        'user_id': user_id,
         'name': name,
         'room': room,
         'phone': phone,
         'email': email,
-        'password': password
     }
-    registration = create_registration(reg_data)
+    try:
+        registration = create_registration(reg_data)
+    except DuplicateKeyError:
+        delete_user(user_id)
+        return jsonify({
+            'success': False,
+            'message': 'This email or phone is already registered or awaiting approval',
+        }), 409
+    except (PyMongoError, RuntimeError):
+        delete_user(user_id)
+        raise
     submitted_at = datetime.now(timezone.utc)
     registration_id = getattr(registration, 'inserted_id', None)
     dedupe_key = (
@@ -2551,7 +2593,10 @@ def get_users_route():
     if current_user.role != 'admin':
         return jsonify({'success': False, 'message': 'Unauthorized'}), 403
 
-    users = get_all_users()
+    users = [
+        user for user in get_all_users()
+        if user.get('status') != 'pending'
+    ]
     # Convert ObjectId to string and remove password_hash
     result = []
     for user in users:
@@ -2647,6 +2692,11 @@ def update_user_route(user_id):
     if 'status' in data:
         if not isinstance(data['status'], str) or data['status'] not in {'active', 'inactive'}:
             return jsonify({'success': False, 'message': 'Status must be active or inactive'}), 400
+        if user.get('status') in {'pending', 'rejected'}:
+            return jsonify({
+                'success': False,
+                'message': 'Enrollment accounts must be resolved from registration review.',
+            }), 409
         updates['status'] = data['status']
     if 'password' in data:
         if not isinstance(data['password'], str) or len(data['password']) < 6:
@@ -2666,6 +2716,12 @@ def delete_user_route(user_id):
     if not user:
         return jsonify({'success': False, 'message': 'User not found'}), 404
 
+    if user.get('status') == 'pending':
+        return jsonify({
+            'success': False,
+            'message': 'Pending enrollments must be rejected from registration review.',
+        }), 409
+
     delete_user(user_id.upper())
     return jsonify({'success': True})
 
@@ -2678,6 +2734,12 @@ def toggle_user_status(user_id):
     user = get_user(user_id.upper())
     if not user:
         return jsonify({'success': False, 'message': 'User not found'}), 404
+
+    if user.get('status') in {'pending', 'rejected'}:
+        return jsonify({
+            'success': False,
+            'message': 'Enrollment accounts must be resolved from registration review.',
+        }), 409
 
     new_status = 'inactive' if user.get('status') == 'active' else 'active'
     update_user(user_id.upper(), {'status': new_status})
@@ -2712,26 +2774,47 @@ def approve_registration(reg_id):
     if not reg or reg.get('status') != 'pending':
         return jsonify({'success': False, 'message': 'Registration not found'}), 404
 
-    base_id = 'STU' + reg_id[-8:].upper()
-    user_id = base_id
-    suffix = 2
-    while get_user(user_id):
-        user_id = f'{base_id}{suffix}'
-        suffix += 1
-    user_data = {
-        'id': user_id,
-        'name': reg['name'],
-        'room': reg['room'],
-        'phone': reg['phone'],
-        'email': reg['email'],
-        'password_hash': reg['password_hash'],
-        'role': 'student',
-        'status': 'active'
-    }
-    get_collection('users').insert_one(user_data)
+    user_id = reg.get('user_id')
+    if user_id:
+        user_data = get_user(user_id)
+        if not user_data or user_data.get('status') != 'pending':
+            return jsonify({
+                'success': False,
+                'message': 'The pending enrollment account was not found.',
+            }), 409
+        update_user(user_id, {'status': 'active'})
+        user_data['status'] = 'active'
+    else:
+        # Preserve compatibility with approval requests created before accounts
+        # were stored in the users collection at enrollment time.
+        if not reg.get('password_hash'):
+            return jsonify({
+                'success': False,
+                'message': 'Registration credentials are unavailable.',
+            }), 409
+        base_id = 'STU' + reg_id[-8:].upper()
+        user_id = base_id
+        suffix = 2
+        while get_user(user_id):
+            user_id = f'{base_id}{suffix}'
+            suffix += 1
+        user_data = {
+            'id': user_id,
+            'name': reg['name'],
+            'room': reg['room'],
+            'phone': reg['phone'],
+            'email': reg['email'],
+            'password_hash': reg['password_hash'],
+            'role': 'student',
+            'status': 'active'
+        }
+        get_collection('users').insert_one(user_data)
     update_registration(ObjectId(reg_id), {'status': 'approved'})
 
-    safe_user = {key: value for key, value in user_data.items() if key != 'password_hash'}
+    safe_user = {
+        key: user_data.get(key)
+        for key in ('id', 'name', 'room', 'phone', 'email', 'role', 'status')
+    }
     return jsonify({'success': True, 'user': safe_user})
 
 @users_bp.route('/registrations/<reg_id>/reject', methods=['POST'])
@@ -2745,6 +2828,10 @@ def reject_registration(reg_id):
     reg = get_collection('registration_requests').find_one({'_id': ObjectId(reg_id), 'status': 'pending'})
     if not reg:
         return jsonify({'success': False, 'message': 'Registration not found'}), 404
+    user_id = reg.get('user_id')
+    user = get_user(user_id) if user_id else None
+    if user and user.get('status') == 'pending':
+        update_user(user_id, {'status': 'rejected'})
     update_registration(ObjectId(reg_id), {'status': 'rejected'})
     return jsonify({'success': True})
 

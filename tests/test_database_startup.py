@@ -1,4 +1,5 @@
 import os
+import re
 import ssl
 import subprocess
 import sys
@@ -351,6 +352,271 @@ class DatabaseStartupTests(unittest.TestCase):
         )
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("Set FLASK_CONFIG=production", result.stderr)
+
+
+class EnrollmentCollection:
+    def __init__(self):
+        self.documents = []
+
+    def _matches(self, document, query):
+        for key, expected in query.items():
+            if key == "$or":
+                if not any(self._matches(document, condition) for condition in expected):
+                    return False
+                continue
+            actual = document.get(key)
+            if isinstance(expected, dict):
+                if "$regex" in expected:
+                    flags = re.IGNORECASE if expected.get("$options") == "i" else 0
+                    if not re.search(expected["$regex"], str(actual or ""), flags):
+                        return False
+                elif "$ne" in expected and actual == expected["$ne"]:
+                    return False
+                elif "$type" in expected and not isinstance(actual, str):
+                    return False
+            elif actual != expected:
+                return False
+        return True
+
+    def find_one(self, query, _projection=None):
+        return next(
+            (document for document in self.documents if self._matches(document, query)),
+            None,
+        )
+
+    def find(self, query=None):
+        return [
+            document for document in self.documents
+            if query is None or self._matches(document, query)
+        ]
+
+    def insert_one(self, document):
+        stored = dict(document)
+        stored.setdefault("_id", backend.ObjectId())
+        self.documents.append(stored)
+        return SimpleNamespace(inserted_id=stored["_id"])
+
+    def update_one(self, query, update, upsert=False):
+        document = self.find_one(query)
+        if document is None and upsert:
+            document = {
+                key: value
+                for key, value in query.items()
+                if not key.startswith("$")
+            }
+            document.update(update.get("$setOnInsert", {}))
+            document.setdefault("_id", backend.ObjectId())
+            self.documents.append(document)
+            return SimpleNamespace(matched_count=0, upserted_id=document["_id"])
+        if document is None:
+            return SimpleNamespace(matched_count=0, upserted_id=None)
+        document.update(update.get("$set", {}))
+        for key, value in update.get("$inc", {}).items():
+            document[key] = document.get(key, 0) + value
+        return SimpleNamespace(matched_count=1, upserted_id=None)
+
+    def delete_one(self, query):
+        document = self.find_one(query)
+        if document is not None:
+            self.documents.remove(document)
+        return SimpleNamespace(deleted_count=int(document is not None))
+
+
+class StudentEnrollmentTests(unittest.TestCase):
+    def setUp(self):
+        self.collections = {}
+        self.collection_patcher = patch.object(
+            backend,
+            "get_collection",
+            side_effect=lambda name: self.collections.setdefault(
+                name,
+                EnrollmentCollection(),
+            ),
+        )
+        self.collection_patcher.start()
+        self.addCleanup(self.collection_patcher.stop)
+
+        self.app = backend.create_app("testing")
+        self.app.extensions["mma_mongo_initialized"] = True
+        self.client = self.app.test_client()
+        backend.create_user({
+            "id": "ADMIN-1",
+            "name": "Admin",
+            "password": "admin-password",
+            "role": "admin",
+            "status": "active",
+        })
+        backend.create_user({
+            "id": "STU-EXISTING",
+            "name": "Existing Student",
+            "phone": "1111111111",
+            "email": "existing@gmail.com",
+            "password": "student-password",
+            "role": "student",
+            "status": "active",
+        })
+
+    def submit_enrollment(self, name, phone, email):
+        return self.client.post(
+            "/api/auth/register",
+            json={
+                "name": name,
+                "room": "G1-01",
+                "phone": phone,
+                "email": email,
+                "password": "new-password",
+                "confirm": "new-password",
+            },
+        )
+
+    def test_student_enrollment_approval_rejection_and_existing_logins(self):
+        response = self.submit_enrollment(
+            "New Student",
+            "2222222222",
+            "new.student@gmail.com",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("approval", response.json["message"].lower())
+
+        registration = self.collections["registration_requests"].documents[0]
+        pending_user = backend.get_user(registration["user_id"])
+        self.assertTrue(pending_user["id"].startswith("STU"))
+        self.assertEqual(pending_user["status"], "pending")
+        self.assertEqual(pending_user["role"], "student")
+        self.assertNotIn("password", pending_user)
+        self.assertTrue(
+            backend.check_password_hash(
+                pending_user["password_hash"],
+                "new-password",
+            )
+        )
+        self.assertNotIn("password_hash", registration)
+
+        pending_login = self.client.post(
+            "/api/auth/login",
+            json={"uid": "2222222222", "pw": "new-password"},
+        )
+        self.assertEqual(pending_login.status_code, 401)
+        self.assertEqual(
+            pending_login.json["message"],
+            "Your enrollment is awaiting admin approval.",
+        )
+
+        duplicate_email = self.submit_enrollment(
+            "Duplicate Email",
+            "3333333333",
+            "new.student@gmail.com",
+        )
+        duplicate_phone = self.submit_enrollment(
+            "Duplicate Phone",
+            "2222222222",
+            "other.student@gmail.com",
+        )
+        self.assertEqual(duplicate_email.status_code, 409)
+        self.assertEqual(duplicate_phone.status_code, 409)
+        self.assertEqual(len(self.collections["registration_requests"].documents), 1)
+
+        admin_login = self.client.post(
+            "/api/auth/login",
+            json={"uid": "ADMIN-1", "pw": "admin-password"},
+        )
+        self.assertEqual(admin_login.status_code, 200)
+        self.assertEqual(admin_login.json["user"]["role"], "admin")
+        managed_users = self.client.get("/api/users/")
+        self.assertEqual(managed_users.status_code, 200)
+        self.assertNotIn(
+            pending_user["id"],
+            [user["id"] for user in managed_users.json["users"]],
+        )
+        self.assertEqual(
+            self.client.post(
+                f"/api/users/{pending_user['id']}/toggle-status",
+            ).status_code,
+            409,
+        )
+        self.assertEqual(
+            self.client.put(
+                f"/api/users/{pending_user['id']}",
+                json={"status": "active"},
+            ).status_code,
+            409,
+        )
+        self.assertEqual(
+            self.client.delete(f"/api/users/{pending_user['id']}").status_code,
+            409,
+        )
+        registrations = self.client.get("/api/users/registrations")
+        self.assertEqual(registrations.status_code, 200)
+        self.assertEqual(len(registrations.json["registrations"]), 1)
+
+        approved = self.client.post(
+            f"/api/users/registrations/{registration['_id']}/approve",
+        )
+        self.assertEqual(approved.status_code, 200)
+        self.assertEqual(approved.json["user"]["id"], pending_user["id"])
+        self.assertEqual(backend.get_user(pending_user["id"])["status"], "active")
+        self.assertEqual(len(self.collections["users"].documents), 3)
+
+        student_login = self.client.post(
+            "/api/auth/login",
+            json={"uid": "new.student@gmail.com", "pw": "new-password"},
+        )
+        self.assertEqual(student_login.status_code, 200)
+        self.assertEqual(student_login.json["user"]["id"], pending_user["id"])
+        existing_student_login = self.client.post(
+            "/api/auth/login",
+            json={"uid": "existing@gmail.com", "pw": "student-password"},
+        )
+        self.assertEqual(existing_student_login.status_code, 200)
+        self.assertEqual(
+            existing_student_login.json["user"]["id"],
+            "STU-EXISTING",
+        )
+
+        admin_login = self.client.post(
+            "/api/auth/login",
+            json={"uid": "ADMIN-1", "pw": "admin-password"},
+        )
+        self.assertEqual(admin_login.status_code, 200)
+        rejected_submission = self.submit_enrollment(
+            "Rejected Student",
+            "4444444444",
+            "rejected.student@gmail.com",
+        )
+        self.assertEqual(rejected_submission.status_code, 200)
+        rejected_registration = self.collections[
+            "registration_requests"
+        ].documents[-1]
+        rejected_user_id = rejected_registration["user_id"]
+        rejected = self.client.post(
+            f"/api/users/registrations/{rejected_registration['_id']}/reject",
+        )
+        self.assertEqual(rejected.status_code, 200)
+        self.assertEqual(backend.get_user(rejected_user_id)["status"], "rejected")
+        self.assertEqual(
+            self.client.post(
+                f"/api/users/{rejected_user_id}/toggle-status",
+            ).status_code,
+            409,
+        )
+        self.assertEqual(
+            self.client.put(
+                f"/api/users/{rejected_user_id}",
+                json={"status": "active"},
+            ).status_code,
+            409,
+        )
+        rejected_login = self.client.post(
+            "/api/auth/login",
+            json={"uid": "rejected.student@gmail.com", "pw": "new-password"},
+        )
+        self.assertEqual(rejected_login.status_code, 401)
+        self.assertIn("rejected", rejected_login.json["message"].lower())
+
+    def test_student_page_exposes_the_existing_backend_enrollment_handler(self):
+        frontend = (ROOT / "static" / "app.js").read_text(encoding="utf-8")
+        self.assertIn("window.submitEnrollment=submitEnrollment;", frontend)
+        self.assertNotIn("This action requires the backend API.", frontend)
 
 
 if __name__ == "__main__":
